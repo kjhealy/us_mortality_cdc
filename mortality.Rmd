@@ -1,0 +1,265 @@
+---
+title: "U.S. State Mortality Counts and Estimates for 2020 (Revised)"
+author:
+- name: Kieran Healy
+  url: https://kieranhealy.org
+  affiliation: Duke University
+  affiliation_url: https://sociology.duke.edu
+date: "`r Sys.Date()`"
+description: |
+  Looking at CDC Data on Mortality.
+toc: true  
+output:
+  pdf_document:
+    template: ~/.pandoc/templates/rmd-latex.template  
+  html_document: distill::distill_article
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(socviz)
+
+library(showtext)
+showtext_auto()
+
+library(myriad)
+import_myriad_semi_ttf()
+
+theme_set(theme_myriad_new())
+
+library(patchwork)
+
+```
+
+```{r}
+library(covdata)
+```
+
+
+```{r}
+
+states <- nchs_wdc_alt %>% 
+  select(jurisdiction) %>% 
+  unique()
+
+```
+
+# Overview
+
+Graphs of current CDC data on weekly mortality counts for the United States nationally, by state, and for New York City. Graphs show (1) Overall weekly death counts, in comparison to the same weeks in 2015-2019, (2) Weekly death counts by selected cause groups, in comparison to the same weeks in 2014-2018, and (3) Percentage difference in mortality between each week in 2020 and the average of the same week between 2014 and 2018. 
+
+Data are from the Centers for Disease Control / National Center for Health Statistics, packaged in `covdata` for R: <https://kjhealy.github.io/covdata>.
+
+
+# Averages 2015-2019
+
+- Using 2015-2019 to follow the CDC in `nchs_wdc`.
+
+```{r}
+
+dat <- nchs_wdc_alt %>%
+  filter(year > 2014)
+
+average_deaths <- nchs_wdc_alt %>% 
+  filter(year %in% c(2015:2019)) %>%
+  group_by(jurisdiction, week, cause) %>%
+  summarize(average_wk_deaths = mean(n, na.rm = TRUE)) 
+
+df <- left_join(dat, average_deaths) %>%
+  select(everything(), n, average_wk_deaths) %>%
+  mutate(n_diff = n - average_wk_deaths, 
+         pct_diff = (n_diff / n)*100) %>%
+  filter(cause %nin% c("Natural Causes", "Other"))
+```
+
+
+```{r}
+
+order_panels <- function(st = state, ...) {
+  df %>% 
+  filter(jurisdiction %in% st, cause != "All Cause") %>%
+  group_by(cause) %>% 
+  summarize(deaths = sum(n, na.rm = TRUE), 
+            .groups = "drop") %>%
+  mutate(cause_rank = rank(-deaths), 
+         o = order(cause_rank),
+         cause_ord = factor(cause, levels = cause[o], ordered = TRUE)) %>%
+  select(cause, cause_ord)
+}
+
+patch_state_count <- function(state) {
+
+  out <- df %>% 
+  filter(jurisdiction %in% state, cause == "All Cause") %>%
+  group_by(year, week) %>% 
+  mutate(yr_ind = year %in% 2020) %>%
+  filter(!(year == 2020 & week > 30)) %>%
+  ggplot(aes(x = week, y = n, color = yr_ind, group = year)) + 
+  geom_line(size = 0.9) + 
+  scale_color_manual(values = c("gray70", "red"), labels = c("2015-2019", "2020")) +
+  scale_x_continuous(breaks = c(1, 10, 20, 30, 40, 50), labels = as.character(c(1, 10, 20, 30, 40, 50))) + 
+  scale_y_continuous(labels = scales::comma) +
+  labs(x = "Week of the Year", 
+       y = "Total Deaths", 
+       color = "Years",
+       title = "Weekly recorded deaths from all causes", 
+       subtitle = "2020 data are for Weeks 1 to 30. Raw Counts.") 
+  
+  out
+
+}
+
+patch_state_cause <- function(state) {
+
+panel_ordering <- order_panels(st = state)
+  
+out <- df %>% 
+  filter(jurisdiction == state, 
+         cause %nin% c("All Cause", "COVID-19 Multiple cause", "COVID-19 Underlying")) %>%
+  group_by(cause, year, week) %>% 
+  summarize(deaths = sum(n, na.rm = TRUE), .groups = "drop") %>%
+  mutate(yr_ind = year %in% 2020) %>%
+  filter(!(year == 2020 & week > 30)) %>%
+  left_join(panel_ordering, by = "cause") %>%
+  ggplot(aes(x = week, y = deaths, color = yr_ind)) + 
+  geom_line(size = 0.9, mapping = aes(group = year)) + 
+  scale_color_manual(values = c("gray70", "red"), labels = c("2015-2019", "2020")) +
+  scale_x_continuous(breaks = c(1, 10, 20, 30, 40, 50), labels = as.character(c(1, 10, 20, 30, 40, 50))) + 
+  scale_y_continuous(labels = scales::comma) +
+  facet_wrap(~ cause_ord, ncol = 2, labeller = label_wrap_gen(25)) + 
+  labs(x = "Week of the Year", 
+       y = "Total Deaths", 
+       color = "Years",
+       title = "Weekly deaths from selected causes", 
+       subtitle = "Panels ordered by number of deaths. Raw Counts.") 
+
+out
+}
+
+patch_state_percent <- function(state){
+  
+  panel_ordering <- order_panels(st = state)
+
+  out <- df %>% 
+  filter(jurisdiction %in% state, 
+         year == 2020, 
+         cause %nin% c("All Cause", "COVID-19 Multiple cause", 
+                                                "COVID-19 Underlying"), !is.na(pct_diff)) %>%
+  group_by(week) %>% 
+  filter(!(week > 30)) %>%
+  mutate(ov_un = pct_diff > 0) %>%
+  left_join(panel_ordering, by = "cause") %>%
+  ggplot(aes(x = week, y = pct_diff/100, fill = ov_un)) + 
+  geom_col() + 
+  scale_x_continuous(breaks = c(1, 10, 20, 30), labels = as.character(c(1, 10, 20, 30))) + 
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_manual(values = c("gray40", "firebrick")) +
+  guides(fill = FALSE) + 
+  facet_wrap(~ cause_ord, ncol = 2, labeller = label_wrap_gen(25)) + 
+  labs(x = "Week of the Year", 
+       y = "Percent", 
+       title = "Percent difference from 2015-2019 average") 
+
+  out
+}
+
+patch_state_covid <- function(state) {
+
+  out <- df %>% 
+  filter(jurisdiction %in% state, cause %in% c("COVID-19 Multiple cause", "COVID-19 Underlying")) %>%
+  group_by(year, week) %>% 
+  mutate(yr_ind = year %in% 2020) %>%
+  filter(year == 2020,  !(week > 30)) %>%
+  ggplot(aes(x = week, y = n, group = year)) + 
+  geom_col(fill = "gray30") + 
+  scale_x_continuous(breaks = c(1, 10, 20, 30, 40, 50), labels = as.character(c(1, 10, 20, 30, 40, 50))) + 
+  scale_y_continuous(labels = scales::comma) + 
+  facet_wrap(~ cause) + 
+  labs(x = "Week of the Year", 
+       y = "Total Deaths", 
+       color = "Years",
+       subtitle = "Data for weeks 1-30. Raw counts.",
+       title = "Weekly recorded deaths from COVID-19") 
+  
+  
+  out
+
+}
+
+
+
+make_patchplot <- function(state){
+(patch_state_count(state) + theme(plot.margin = unit(c(5,0,0,0), "pt"))) / patch_state_covid(state) / (patch_state_cause(state) + (patch_state_percent(state))) +  
+    plot_layout(heights = c(2, 0.5, 4), guides = 'collect') + 
+  plot_annotation(
+  title = state,
+  caption = 'Graph: @kjhealy Data: CDC',
+  theme = theme(plot.title = element_text(size = rel(2), hjust = 0, face = "plain")))
+}
+```
+
+```{r draw-everything}
+
+out_patch <- states %>% 
+  mutate(patch_plot = map(jurisdiction, make_patchplot))
+
+map2(tolower(paste0("figures/", out_patch$jurisdiction, "-patch", ".png")), 
+     out_patch$patch_plot, ggsave, height = 16, width = 9, dpi = 200)
+
+map2(tolower(paste0("figures/", out_patch$jurisdiction, "-patch", ".pdf")), 
+     out_patch$patch_plot, ggsave, height = 16, width = 9)
+
+
+```
+
+
+```{r}
+
+us_average_deaths <- nchs_wdc_alt %>% 
+  filter(year %in% c(2015:2019)) %>%
+  group_by(week, cause) %>%
+  summarize(average_wk_deaths = mean(n, na.rm = TRUE)) %>%
+  ungroup()
+
+us_total <- nchs_wdc_alt %>%
+  group_by(year, week, cause) %>%
+  summarize(n = sum(n, na.rm = TRUE)) %>%
+  ungroup()
+
+us_all <- left_join(us_total, us_average_deaths) %>%
+  filter(year %in% c(2015:2019)) %>%
+  select(everything(), n, average_wk_deaths) %>%
+  mutate(n_diff = n - average_wk_deaths, 
+         pct_diff = (n_diff / n)*100)
+
+us_all %>% 
+  filter(cause == "All Cause") %>%
+  group_by(year) %>%
+  summarize(total = sum(n))
+
+us <- make_patchplot("United States")
+
+ggsave("figures/usa_patch.pdf", us, height = 16, width = 9)
+ggsave("figures/usa_patch.png", us, height = 16, width = 9, dpi = 200)
+
+```
+
+```{r, echo = FALSE, fig.align = "center", fig.show="asis"}
+include_graphics("figures/usa-patch.pdf")
+```
+
+
+```{r, echo = FALSE, fig.align = "center", fig.show="asis"}
+patchplots <- list.files("figures/", pattern = ".pdf", full.names = TRUE)
+include_graphics(patchplots)
+```
+
+
+
+
+
