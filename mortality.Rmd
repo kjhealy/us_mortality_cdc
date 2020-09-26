@@ -52,13 +52,15 @@ library(covdata)
 
 states <- nchs_wdc_alt %>% 
   select(jurisdiction) %>% 
-  unique()
+  unique() %>%
+  mutate(fname = tolower(paste0("figures/", jurisdiction, "_patch")), 
+         fname = stringr::str_replace_all(fname, " ", "_"))
 
 ```
 
 # Overview
 
-Graphs of current CDC data on weekly mortality counts for the United States nationally, by state, and for New York City. Graphs show (1) Overall weekly death counts, in comparison to the same weeks in 2015-2019, (2) Weekly death counts by selected cause groups, in comparison to the same weeks in 2014-2018, and (3) Percentage difference in mortality between each week in 2020 and the average of the same week between 2014 and 2018. 
+Graphs of current CDC data on weekly mortality counts for the United States nationally, by state, and for New York City. Graphs show (1) Overall weekly all-cause death counts, in comparison to the same weeks in 2015-2019, (2) COVID-19 attributed deaths (multiple cause) for 2020, (3) Weekly death counts by selected cause groups, in comparison to the same weeks in 2014-2018, and (3) Percentage difference in mortality between each week in 2020 and the average of the same week between 2014 and 2018. 
 
 Data are from the Centers for Disease Control / National Center for Health Statistics, packaged in `covdata` for R: <https://kjhealy.github.io/covdata>.
 
@@ -70,7 +72,8 @@ Data are from the Centers for Disease Control / National Center for Health Stati
 ```{r}
 
 dat <- nchs_wdc_alt %>%
-  filter(year > 2014)
+  filter(year > 2014) %>%
+  mutate(month_label = lubridate::month(week_ending_date, label = TRUE))
 
 average_deaths <- nchs_wdc_alt %>% 
   filter(year %in% c(2015:2019)) %>%
@@ -86,6 +89,12 @@ df <- left_join(dat, average_deaths) %>%
 
 
 ```{r}
+
+season_label <- tibble(wk_num = lubridate::epiweek(as.Date(c("2020-03-01",
+                                     "2020-06-01",
+                                     "2020-09-01",
+                                     "2020-12-01"))),
+                    season_lab = c("Spring", "Summer", "Autumn", "Winter"))
 
 order_panels <- function(st = state, ...) {
   df %>% 
@@ -108,10 +117,10 @@ patch_state_count <- function(state) {
   filter(!(year == 2020 & week > 30)) %>%
   ggplot(aes(x = week, y = n, color = yr_ind, group = year)) + 
   geom_line(size = 0.9) + 
-  scale_color_manual(values = c("gray70", "red"), labels = c("2015-2019", "2020")) +
-  scale_x_continuous(breaks = c(1, 10, 20, 30, 40, 50), labels = as.character(c(1, 10, 20, 30, 40, 50))) + 
+  scale_color_manual(values = c("gray70", "firebrick"), labels = c("2015-2019", "2020")) +
+  scale_x_continuous(breaks = season_label$wk_num, labels = season_label$season_lab) +      
   scale_y_continuous(labels = scales::comma) +
-  labs(x = "Week of the Year", 
+  labs(x = NULL, 
        y = "Total Deaths", 
        color = "Years",
        title = "Weekly recorded deaths from all causes", 
@@ -135,7 +144,7 @@ out <- df %>%
   left_join(panel_ordering, by = "cause") %>%
   ggplot(aes(x = week, y = deaths, color = yr_ind)) + 
   geom_line(size = 0.9, mapping = aes(group = year)) + 
-  scale_color_manual(values = c("gray70", "red"), labels = c("2015-2019", "2020")) +
+  scale_color_manual(values = c("gray70", "firebrick"), labels = c("2015-2019", "2020")) +
   scale_x_continuous(breaks = c(1, 10, 20, 30, 40, 50), labels = as.character(c(1, 10, 20, 30, 40, 50))) + 
   scale_y_continuous(labels = scales::comma) +
   facet_wrap(~ cause_ord, ncol = 2, labeller = label_wrap_gen(25)) + 
@@ -170,7 +179,8 @@ patch_state_percent <- function(state){
   facet_wrap(~ cause_ord, ncol = 2, labeller = label_wrap_gen(25)) + 
   labs(x = "Week of the Year", 
        y = "Percent", 
-       title = "Percent difference from 2015-2019 average") 
+       title = "Percent difference from 2015-2019 average",
+       subtitle = "Data for weeks 1 to 30 only.") 
 
   out
 }
@@ -178,27 +188,25 @@ patch_state_percent <- function(state){
 patch_state_covid <- function(state) {
 
   out <- df %>% 
-  filter(jurisdiction %in% state, cause %in% c("COVID-19 Multiple cause", "COVID-19 Underlying")) %>%
+  filter(jurisdiction %in% state, cause %in% c("COVID-19 Multiple cause")) %>%
   group_by(year, week) %>% 
   mutate(yr_ind = year %in% 2020) %>%
-  filter(year == 2020,  !(week > 30)) %>%
+  filter(year == 2020) %>%
   ggplot(aes(x = week, y = n, group = year)) + 
   geom_col(fill = "gray30") + 
-  scale_x_continuous(breaks = c(1, 10, 20, 30, 40, 50), labels = as.character(c(1, 10, 20, 30, 40, 50))) + 
+  scale_x_continuous(breaks = c(1, 10, 20, 30, 40, 50), 
+                     labels = as.character(c(1, 10, 20, 30, 40, 50)), 
+                     limits = c(1, 52)) + 
   scale_y_continuous(labels = scales::comma) + 
-  facet_wrap(~ cause) + 
   labs(x = "Week of the Year", 
        y = "Total Deaths", 
        color = "Years",
-       subtitle = "Data for weeks 1-30. Raw counts.",
-       title = "Weekly recorded deaths from COVID-19") 
-  
+       subtitle = "Raw counts.",
+       title = "Weekly deaths recorded as COVID-19 (Multiple cause)") 
   
   out
 
 }
-
-
 
 make_patchplot <- function(state){
 (patch_state_count(state) + theme(plot.margin = unit(c(5,0,0,0), "pt"))) / patch_state_covid(state) / (patch_state_cause(state) + (patch_state_percent(state))) +  
@@ -215,10 +223,10 @@ make_patchplot <- function(state){
 out_patch <- states %>% 
   mutate(patch_plot = map(jurisdiction, make_patchplot))
 
-map2(tolower(paste0("figures/", out_patch$jurisdiction, "-patch", ".png")), 
+walk2(paste0(out_patch$fname, ".png"), 
      out_patch$patch_plot, ggsave, height = 16, width = 9, dpi = 200)
 
-map2(tolower(paste0("figures/", out_patch$jurisdiction, "-patch", ".pdf")), 
+walk2(paste0(out_patch$fname, ".pdf"), 
      out_patch$patch_plot, ggsave, height = 16, width = 9)
 
 
@@ -243,12 +251,7 @@ us_all <- left_join(us_total, us_average_deaths) %>%
   select(everything(), n, average_wk_deaths) %>%
   mutate(n_diff = n - average_wk_deaths, 
          pct_diff = (n_diff / n)*100)
-
-us_all %>% 
-  filter(cause == "All Cause") %>%
-  group_by(year) %>%
-  summarize(total = sum(n))
-
+  
 us <- make_patchplot("United States")
 
 ggsave("figures/usa_patch.pdf", us, height = 16, width = 9)
@@ -256,12 +259,12 @@ ggsave("figures/usa_patch.png", us, height = 16, width = 9, dpi = 200)
 
 ```
 
-```{r, echo = FALSE, fig.align = "center", fig.show="asis"}
-include_graphics("figures/usa-patch.pdf")
+```{r, echo = FALSE, fig.align = "center", fig.show="asis", out.width="90%"}
+include_graphics("figures/usa_patch.pdf")
 ```
 
 
-```{r, echo = FALSE, fig.align = "center", fig.show="asis"}
+```{r, echo = FALSE, fig.align = "center", fig.show="asis", out.width="90%"}
 patchplots <- list.files("figures/", pattern = ".pdf", full.names = TRUE)
 include_graphics(patchplots)
 ```
