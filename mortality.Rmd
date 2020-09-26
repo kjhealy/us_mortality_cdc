@@ -22,8 +22,12 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 ```{r}
 library(tidyverse)
 library(janitor)
+
+## https://kjhealy.github.io/socviz
 library(socviz)
 
+###-------------------------------------------------
+### Not needed to draw the graphs
 library(showtext)
 showtext_auto()
 
@@ -31,12 +35,15 @@ library(myriad)
 import_myriad_semi_ttf()
 
 theme_set(theme_myriad_new())
+###-------------------------------------------------
+
 
 library(patchwork)
 
 ```
 
 ```{r}
+## https://kjhealy.github.io/covdata
 library(covdata)
 ```
 
