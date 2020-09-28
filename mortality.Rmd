@@ -50,7 +50,7 @@ library(covdata)
 
 ```{r}
 
-states <- nchs_wdc_alt %>% 
+states <- nchs_wdc %>% 
   select(jurisdiction) %>% 
   unique() %>%
   mutate(fname = tolower(paste0("figures/", jurisdiction, "_patch")), 
@@ -71,11 +71,11 @@ Data are from the Centers for Disease Control / National Center for Health Stati
 
 ```{r}
 
-dat <- nchs_wdc_alt %>%
+dat <- nchs_wdc %>%
   filter(year > 2014) %>%
   mutate(month_label = lubridate::month(week_ending_date, label = TRUE))
 
-average_deaths <- nchs_wdc_alt %>% 
+average_deaths <- nchs_wdc %>% 
   filter(year %in% c(2015:2019)) %>%
   group_by(jurisdiction, week, cause) %>%
   summarize(average_wk_deaths = mean(n, na.rm = TRUE)) 
@@ -249,13 +249,13 @@ walk2(paste0(out_patch$fname, ".pdf"),
 
 ```{r}
 
-us_average_deaths <- nchs_wdc_alt %>% 
+us_average_deaths <- nchs_wdc %>% 
   filter(year %in% c(2015:2019)) %>%
   group_by(week, cause) %>%
   summarize(average_wk_deaths = mean(n, na.rm = TRUE)) %>%
   ungroup()
 
-us_total <- nchs_wdc_alt %>%
+us_total <- nchs_wdc %>%
   group_by(year, week, cause) %>%
   summarize(n = sum(n, na.rm = TRUE)) %>%
   ungroup()
