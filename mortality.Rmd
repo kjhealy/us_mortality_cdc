@@ -10,13 +10,14 @@ description: |
   Looking at CDC Data on Mortality.
 toc: true  
 output:
+  html_document:
+    highlight: tango    
   pdf_document:
     template: ~/.pandoc/templates/rmd-latex.template  
-  html_document: distill::distill_article
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set()
 ```
 
 ```{r}
@@ -90,7 +91,7 @@ df <- left_join(dat, average_deaths) %>%
 
 ```{r}
 ## Choose how many red-line wks
-nwks <- 30
+nwks <- 37
 
 season_label <- tibble(wk_num = lubridate::epiweek(as.Date(c("2020-03-01",
                                      "2020-06-01",
@@ -132,7 +133,7 @@ patch_state_count <- function(state) {
 
 }
 
-patch_state_cause <- function(state) {
+patch_state_cause <- function(state, nc = 2) {
 
 panel_ordering <- order_panels(st = state)
   
@@ -149,7 +150,7 @@ out <- df %>%
   scale_color_manual(values = c("gray70", "firebrick"), labels = c("2015-2019", "2020")) +
   scale_x_continuous(breaks = c(1, 10, 20, 30, 40, 50), labels = as.character(c(1, 10, 20, 30, 40, 50))) + 
   scale_y_continuous(labels = scales::comma) +
-  facet_wrap(~ cause_ord, ncol = 2, labeller = label_wrap_gen(25)) + 
+  facet_wrap(~ cause_ord, ncol = nc, labeller = label_wrap_gen(25)) + 
   labs(x = "Week of the Year", 
        y = "Total Deaths", 
        color = "Years",
@@ -159,7 +160,7 @@ out <- df %>%
 out
 }
 
-patch_state_percent <- function(state){
+patch_state_percent <- function(state, nc = 2){
   
   panel_ordering <- order_panels(st = state)
 
@@ -178,7 +179,7 @@ patch_state_percent <- function(state){
   scale_y_continuous(labels = scales::percent) +
   scale_fill_manual(values = c("gray40", "firebrick")) +
   guides(fill = FALSE) + 
-  facet_wrap(~ cause_ord, ncol = 2, labeller = label_wrap_gen(25)) + 
+  facet_wrap(~ cause_ord, ncol = nc, labeller = label_wrap_gen(25)) + 
   labs(x = "Week of the Year", 
        y = "Percent", 
        title = "Percent difference from 2015-2019 average",
@@ -232,7 +233,7 @@ timestamp <-  lubridate::stamp("March 1, 1999", "%B %d, %Y")(lubridate::ymd(Sys.
 }
 ```
 
-```{r draw-everything}
+```{r draw-everything, eval = FALSE}
 
 out_patch <- states %>% 
   mutate(patch_plot = map(jurisdiction, make_patchplot))
@@ -240,12 +241,13 @@ out_patch <- states %>%
 walk2(paste0(out_patch$fname, ".png"), 
      out_patch$patch_plot, ggsave, height = 16, width = 9, dpi = 200)
 
-walk2(paste0(out_patch$fname, ".pdf"), 
-     out_patch$patch_plot, ggsave, height = 16, width = 9)
+walk2(paste0(out_patch$fname[9:54], ".pdf"), 
+     out_patch$patch_plot[9:54], ggsave, height = 16, width = 9)
+
+
 
 
 ```
-
 
 ```{r}
 
@@ -274,13 +276,13 @@ ggsave("figures/usa_patch.png", us, height = 16, width = 9, dpi = 200)
 ```
 
 ```{r, echo = FALSE, fig.align = "center", fig.show="asis", out.width="90%"}
-include_graphics("figures/usa_patch.pdf")
+#include_graphics("figures/usa_patch.pdf")
 ```
 
 
 ```{r, echo = FALSE, fig.align = "center", fig.show="asis", out.width="90%"}
-patchplots <- list.files("figures/", pattern = ".pdf", full.names = TRUE)
-include_graphics(patchplots)
+#patchplots <- list.files("figures/", pattern = ".pdf", full.names = TRUE)
+#include_graphics(patchplots)
 ```
 
 ## Comparative mortality data
@@ -316,7 +318,7 @@ out <- stmf %>%
   scale_x_continuous(limits = c(1, 52),  
                      breaks = c(1, seq(10, 50, 10)), 
                      labels = as.character(c(1, seq(10, 50, 10)))) + 
-  facet_wrap(~ reorder(cname, rate_rank, na.rm = TRUE), ncol = 4) +
+  facet_wrap(~ reorder(cname, rate_rank, na.rm = TRUE), ncol = 10) +
   geom_line(size = 0.9) + 
   guides(color = guide_legend(override.aes = list(size = 3))) + 
   labs(x = "Week of the Year", 
@@ -334,8 +336,106 @@ out <- stmf %>%
 
 
 ggsave("figures/national_mortality_rates.pdf", out, height = 16, width = 13)
-ggsave("figures/national_mortality_rates.png", out, height = 16, width = 13)
+ggsave("figures/national_mortality_rates_wide.png", out, height = 10, width = 20)
 
+
+```
+
+
+```{r}
+
+df %>% 
+  filter(jurisdiction == "United States", year == 2020) %>%
+  summarize(wk = max(week))
+  group_by(year, cause) %>%
+  summarize(tot = sum(n)) %>%
+  summarize(overall = sum(tot))
+
+df %>% 
+  filter(jurisdiction == "United States", cause == "All Cause", year == 2020) %>%
+  group_by(year, cause) %>%
+  summarize(tot = sum(n)) %>%
+  summarize(overall = sum(tot))
+
+
+
+```
+
+
+```{r}
+out <- patch_state_percent("United States", nc = 5)
+ggsave(filename = "figures/usa_pct_wide.pdf", height = 4.5, width = 8)
+
+
+```
+
+```{r}
+
+start_week <- 9
+end_week <- 34
+
+df_yr <- nchs_wdc %>%
+#  filter(jurisdiction == "United States") %>% 
+  filter(year > 2014,
+         week >= start_week & 
+         week <= end_week) %>% 
+  group_by(jurisdiction, cause, year) %>%
+  summarize(period_deaths = sum(n, na.rm = TRUE)) 
+
+baseline_deaths <- nchs_wdc %>% 
+  #filter(jurisdiction == "United States") %>% 
+  filter(year %in% c(2015:2019),
+         week >= start_week & 
+         week <= end_week) %>%
+  group_by(jurisdiction, year, cause) %>%
+  summarize(total_n = sum(n, na.rm = TRUE)) %>%
+  group_by(jurisdiction, cause) %>%
+  summarize(baseline = mean(total_n, na.rm = TRUE), 
+            baseline_sd = sd(total_n, na.rm = TRUE)) 
+
+df_excess <- left_join(df_yr, baseline_deaths) %>%
+  mutate(excess = period_deaths - baseline, 
+         pct_excess = (excess / period_deaths)*100, 
+         pct_sd = (baseline_sd/baseline)*100) %>%
+  rename(deaths = period_deaths)
+
+jurs <- c("AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", 
+          "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", 
+          "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", 
+          "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", 
+          "NY", "NYC", "NC", "ND", "OH", "OK", "OR", "PA", 
+          "PR", "RI", "SC", "SD", "TN", "TX", "USA", "UT", "VT", 
+          "VA", "WA", "WV", "WI", "WY")
+
+df_overlays <- as_tibble(data.frame(
+  state = unique(df_excess$jurisdiction), 
+  jurs = jurs, 
+  x = 0.5, y = 0.5)) %>% 
+  mutate(fname = tolower(paste0("figures/", state, "_overlay")), 
+         fname = stringr::str_replace_all(fname, " ", "_"))
+
+
+abbr_plot <- function(x, y, lab){
+  ggplot(mapping = aes(x = x, y = y, label = lab)) + 
+    annotate("rect", xmin = 0, xmax = 1, ymin = 0, ymax = 1, 
+             fill = "red", alpha = 0.2) + 
+    geom_text(fontface = "bold", size = 5) +
+    theme_void() + 
+    theme(rect = element_rect(fill = "transparent", 
+                              color = "transparent"))
+}
+
+df_overlays <- df_overlays %>% 
+  mutate(overlay = pmap(list(x = x, y = y, lab = jurs), abbr_plot))
+
+df_overlays$overlay[4]
+
+walk2(paste0(df_overlays$fname, ".png"),
+      df_overlays$overlay, 
+      ggsave, 
+      height = 0.5, 
+      width = 1, 
+      dpi = 300)
 
 ```
 
