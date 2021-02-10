@@ -18,7 +18,7 @@ for patchname in *_patch.png; do
 	filename="${patchname%.*}"
 
 
-  cp "$patchname" "./${filename}_thumb.png"
+  cp -f "$patchname" "./${filename}_thumb.png"
 
 done
 
@@ -29,16 +29,16 @@ mv united_states_patch.pdf usa_patch.pdf
 ### Shrink to thumbnail size
 echo "Shrinking patch files to thumbnails ..."
 
-mogrify -resize 240x480 -format png *patch_thumb.png    
+mogrify -resize 240x480 -format png *patch_thumb.png
 
 ## Add overlays
 
 echo "Adding overlays to thumbnails ..."
 
-for filename in *_overlay.png; do    
+for filename in *_overlay.png; do
 
 n=${filename%%_overlay.png}
-        
+
 echo $filename
 echo $n
 
