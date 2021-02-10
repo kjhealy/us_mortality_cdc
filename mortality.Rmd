@@ -399,14 +399,14 @@ out <- df_state_excess %>%
  facet_wrap(~reorder(cause, -pct_excess), ncol = 2) 
 
 
-out <- out + theme(strip.text = element_text(size = rel(1.1), hjust = 0), 
+out <- out + theme(strip.text = element_text(size = rel(1.2), hjust = 0), 
           legend.justification = "left", 
           panel.border  = element_rect(color = "gray90", size = rel(0.8), linetype="solid", fill = NA),
           axis.text.y = element_text(face = c(rep("plain", 5), "bold", rep("plain", 6))))
 
 
-ggsave(filename = "figures/excess_by_cause_jurisdiction.pdf", out, height = 12, width = 12)
-ggsave(filename = "figures/excess_by_cause_jurisdiction.png", out, height = 12, width = 12, dpi = 200)
+ggsave(filename = "figures/excess_by_cause_jurisdiction.pdf", out, height = 12, width = 8)
+ggsave(filename = "figures/excess_by_cause_jurisdiction.png", out, height = 12, width = 8, dpi = 200)
 
 ```
 
@@ -417,15 +417,18 @@ include_graphics("figures/excess_by_cause_jurisdiction.pdf")
 
 ```{r}
 
+timestamp <-  lubridate::stamp("March 1, 1999", "%B %d, %Y")(lubridate::ymd(Sys.Date()))   
+
 out <- df_state_excess %>% 
-   filter(cause %in% c("All Cause")) %>% 
+   filter(cause %in% c("All Cause"), 
+          jurisdiction %nin% "North Carolina") %>% 
   mutate(yr_ind = ifelse(year == 2020, TRUE, FALSE)) %>%
   ggplot(aes(x = pct_excess/100, 
-             y = reorder(jurisdiction, deaths), 
+             y = reorder(jurisdiction, pct_excess), 
              color = yr_ind, shape = yr_ind, group = year)) + 
   geom_linerange(mapping = aes(xmin = lwr/100, 
                                xmax = upr/100, 
-                               y = reorder(jurisdiction, deaths, mean, na.rm = TRUE)), 
+                               y = reorder(jurisdiction, pct_excess)), 
                  color = "lightblue1", alpha = 0.7, size = 3) + 
   geom_vline(xintercept = 0, color = "black") + 
   geom_jitter(size = 2, position = position_jitter(height = 0.05)) +
@@ -436,24 +439,28 @@ out <- df_state_excess %>%
   scale_x_continuous(labels = scales::percent_format(accuracy = 1), 
                      breaks = seq(-0.2, 0.5, 0.1), 
                      position = "top") + 
-  guides(shape = guide_legend(keywidth = 0.15), 
+  guides(shape = guide_legend(keywidth = 0.15, override.aes = list(size = 4)), 
          color = guide_legend(keywidth = 0.15)) + 
-  labs(x = "   Percent above or below the average number of deaths, 2015-2019", 
+  labs(x = "  Percent above or below the average number of deaths, 2015-2019", 
        y = NULL, 
        color = "Years",
        shape = "Years",
-       title = "  All-Cause Mortality by Jurisdiction, 2020",
-       subtitle = "  Blue bars show +/- 2 standard deviations around the 2015-2019 mean.\n  Jurisdictions ordered from highest to lowest all-cause mortality count.\n  The low NC counts are an artifact of reporting delays.",
-       caption = "Data: CDC. Calculations and Graph: Kieran Healy / @kjhealy") 
+       title = " All-Cause Mortality in the United States:\n Comparing 2020 to 2015-2019",
+       subtitle = " Provisional data. Blue bars show +/- 2 standard deviations around the 2015-2019 mean.\n Jurisdictions are ordered from highest to lowest percentage difference from the 2015-19 baseline.",
+       caption = paste0("North Carolina is omitted due to reporting delays. Data: CDC. Calculations and Graph: Kieran Healy / @kjhealy\nThis graph was made on ", timestamp)) 
 
 out <- out + theme(legend.justification = "left", 
-          panel.border  = element_rect(color = "gray90", size = rel(0.8), linetype="solid", fill = NA),
-          axis.text.y = element_text(face = c(rep("plain", 53), "bold")), 
+          panel.border  = element_rect(color = "gray90", size = rel(0.9), linetype="solid", fill = NA),
+          axis.text.y = element_text(face = c(rep("plain", 28), "bold", rep("plain", 25))), 
           axis.title.x = element_text(hjust = 0, size = rel(0.9)), 
-          plot.title = element_text(size = rel(1.35)))
+          legend.text = element_text(size=rel(1.1)),
+          legend.title = element_text(size=rel(1.2)),
+          plot.title = element_text(size = rel(1.65)), 
+          plot.margin = margin(1, 2, 0.5, 0.5, "cm"))
 
-ggsave(filename = "figures/excess_all_cause_by_jurisdiction.pdf", out, height = 11, width = 8)
-ggsave(filename = "figures/excess_all_cause_by_jurisdiction.png", out, height = 11, width = 8, dpi = 200)
+ggsave(filename = "figures/excess_all_cause_by_jurisdiction.pdf", out, height = 12, width = 8)
+ggsave(filename = "figures/excess_all_cause_by_jurisdiction.png", out, height = 12, width = 8, dpi = 200)
+
 
 ```
 
