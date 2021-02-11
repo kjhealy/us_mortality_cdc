@@ -355,7 +355,18 @@ df_state_sd <- df_excess %>%
 
 
 
-df_state_excess <- left_join(df_excess, df_state_sd)
+df_state_excess <- left_join(df_excess, df_state_sd) 
+
+df_state_excess2020 <- df_state_excess %>% 
+  select(jurisdiction,  year, cause, pct_excess) %>% 
+  filter(year == 2020) %>% 
+  rename(pct_excess_2020 = pct_excess) %>% 
+  select(jurisdiction, cause, pct_excess_2020)
+
+df_state_excess <- left_join(df_state_excess, df_state_excess2020)
+```
+
+```{r}
 
 out <- df_state_excess %>% 
    filter(cause %in% c("Alzheimer's", 
@@ -374,11 +385,11 @@ out <- df_state_excess %>%
                               "Illinois")) %>% 
   mutate(yr_ind = ifelse(year == 2020, TRUE, FALSE)) %>%
   ggplot(aes(x = pct_excess/100, 
-             y = reorder(jurisdiction, pct_excess), 
+             y = reorder(jurisdiction, pct_excess_2020), 
              color = yr_ind, shape = yr_ind, group = year)) + 
   geom_linerange(mapping = aes(xmin = lwr/100, 
                                xmax = upr/100, 
-                               y = reorder(jurisdiction, pct_excess, mean, na.rm = TRUE)), 
+                               y = reorder(jurisdiction, pct_excess_2020)), 
                  color = "lightblue1", alpha = 0.7, size = 3) + 
   geom_vline(xintercept = 0, color = "black") + 
   geom_jitter(size = 2, position = position_jitter(height = 0.05)) +
@@ -402,7 +413,7 @@ out <- df_state_excess %>%
 out <- out + theme(strip.text = element_text(size = rel(1.2), hjust = 0), 
           legend.justification = "left", 
           panel.border  = element_rect(color = "gray90", size = rel(0.8), linetype="solid", fill = NA),
-          axis.text.y = element_text(face = c(rep("plain", 5), "bold", rep("plain", 6))))
+          axis.text.y = element_text(face = c(rep("plain", 4), "bold", rep("plain", 7))))
 
 
 ggsave(filename = "figures/excess_by_cause_jurisdiction.pdf", out, height = 12, width = 8)
@@ -424,11 +435,11 @@ out <- df_state_excess %>%
           jurisdiction %nin% "North Carolina") %>% 
   mutate(yr_ind = ifelse(year == 2020, TRUE, FALSE)) %>%
   ggplot(aes(x = pct_excess/100, 
-             y = reorder(jurisdiction, pct_excess), 
+             y = reorder(jurisdiction, pct_excess_2020, na.rm = TRUE), 
              color = yr_ind, shape = yr_ind, group = year)) + 
   geom_linerange(mapping = aes(xmin = lwr/100, 
                                xmax = upr/100, 
-                               y = reorder(jurisdiction, pct_excess)), 
+                               y = reorder(jurisdiction, pct_excess_2020, na.rm = TRUE)), 
                  color = "lightblue1", alpha = 0.7, size = 3) + 
   geom_vline(xintercept = 0, color = "black") + 
   geom_jitter(size = 2, position = position_jitter(height = 0.05)) +
@@ -451,7 +462,7 @@ out <- df_state_excess %>%
 
 out <- out + theme(legend.justification = "left", 
           panel.border  = element_rect(color = "gray90", size = rel(0.9), linetype="solid", fill = NA),
-          axis.text.y = element_text(face = c(rep("plain", 28), "bold", rep("plain", 25))), 
+          axis.text.y = element_text(face = c(rep("plain", 29), "bold", rep("plain", 24))), 
           axis.title.x = element_text(hjust = 0, size = rel(0.9)), 
           legend.text = element_text(size=rel(1.1)),
           legend.title = element_text(size=rel(1.2)),
@@ -647,7 +658,7 @@ timestamp <-  lubridate::stamp("March 1, 1999", "%B %d, %Y")(lubridate::ymd(Sys.
 }
 ```
 
-```{r draw-everything, eval = FALSE}
+```{r draw-everything, eval = TRUE}
 
 out_patch <- states %>% 
   mutate(patch_plot = map(jurisdiction, make_patchplot))
