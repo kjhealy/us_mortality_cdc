@@ -361,12 +361,26 @@ df_state_excess2020 <- df_state_excess %>%
   select(jurisdiction,  year, cause, pct_excess) %>% 
   filter(year == 2020) %>% 
   rename(pct_excess_2020 = pct_excess) %>% 
-  select(jurisdiction, cause, pct_excess_2020)
+  select(jurisdiction, cause, pct_excess_2020) %>% 
+  mutate(all_excess_2020 = if_else(cause == "All Cause", pct_excess_2020, NA_real_)) 
+
+df_state_excess2020 %>%
+  ungroup() %>% 
+  fill(all_excess_2020) %>% 
+  group_by(jurisdiction, cause) 
 
 df_state_excess <- left_join(df_state_excess, df_state_excess2020)
+
+df_state_excess <- df_state_excess %>%
+  ungroup() %>% 
+  fill(all_excess_2020) %>% 
+  group_by(jurisdiction, cause) 
+
+
 ```
 
 ```{r}
+timestamp <-  lubridate::stamp("March 1, 1999", "%B %d, %Y")(lubridate::ymd(Sys.Date()))   
 
 out <- df_state_excess %>% 
    filter(cause %in% c("Alzheimer's", 
@@ -385,11 +399,11 @@ out <- df_state_excess %>%
                               "Illinois")) %>% 
   mutate(yr_ind = ifelse(year == 2020, TRUE, FALSE)) %>%
   ggplot(aes(x = pct_excess/100, 
-             y = reorder(jurisdiction, pct_excess_2020), 
+             y = reorder(jurisdiction, all_excess_2020), 
              color = yr_ind, shape = yr_ind, group = year)) + 
   geom_linerange(mapping = aes(xmin = lwr/100, 
                                xmax = upr/100, 
-                               y = reorder(jurisdiction, pct_excess_2020)), 
+                               y = reorder(jurisdiction, all_excess_2020)), 
                  color = "lightblue1", alpha = 0.7, size = 3) + 
   geom_vline(xintercept = 0, color = "black") + 
   geom_jitter(size = 2, position = position_jitter(height = 0.05)) +
@@ -405,15 +419,15 @@ out <- df_state_excess %>%
        color = "Years",
        shape = "Years",
        title = "  Excess deaths for selected jurisdictions and causes, 2020",
-       subtitle = "  Blue bars show +/- 2 standard deviations around the 2015-2019 mean for each cause.\nIndividual deaths may be recorded as having more than one cause.",
-       caption = "Data: CDC. Calculations and Graph: Kieran Healy / @kjhealy") +
- facet_wrap(~reorder(cause, -pct_excess), ncol = 2) 
+       subtitle = "  Blue bars show +/- 2 standard deviations around the 2015-2019 mean for each cause.\n Individual deaths may be recorded as having more than one cause.",
+       caption = paste0("Data: CDC. Calculations and Graph: Kieran Healy / @kjhealy\nThis graph was made on ", timestamp)) +
+ facet_wrap(~reorder(cause, -pct_excess_2020), ncol = 2) 
 
 
 out <- out + theme(strip.text = element_text(size = rel(1.2), hjust = 0), 
           legend.justification = "left", 
           panel.border  = element_rect(color = "gray90", size = rel(0.8), linetype="solid", fill = NA),
-          axis.text.y = element_text(face = c(rep("plain", 4), "bold", rep("plain", 7))))
+          axis.text.y = element_text(face = c(rep("plain", 6), "bold", rep("plain", 5))))
 
 
 ggsave(filename = "figures/excess_by_cause_jurisdiction.pdf", out, height = 12, width = 8)
@@ -458,11 +472,11 @@ out <- df_state_excess %>%
        shape = "Years",
        title = " All-Cause Mortality in the United States:\n Comparing 2020 to 2015-2019",
        subtitle = " Provisional data. Blue bars show +/- 2 standard deviations around the 2015-2019 mean.\n Jurisdictions are ordered from highest to lowest percentage difference from the 2015-19 baseline.",
-       caption = paste0("North Carolina is omitted due to reporting delays. Data: CDC. Calculations and Graph: Kieran Healy / @kjhealy\nThis graph was made on ", timestamp)) 
+       caption = paste0("North Carolina is omitted due to severe reporting delays. Data: CDC. Calculations and Graph: Kieran Healy / @kjhealy\nThis graph was made on ", timestamp)) 
 
 out <- out + theme(legend.justification = "left", 
           panel.border  = element_rect(color = "gray90", size = rel(0.9), linetype="solid", fill = NA),
-          axis.text.y = element_text(face = c(rep("plain", 29), "bold", rep("plain", 24))), 
+          axis.text.y = element_text(face = c(rep("plain", 31), "bold", rep("plain", 22))), 
           axis.title.x = element_text(hjust = 0, size = rel(0.9)), 
           legend.text = element_text(size=rel(1.1)),
           legend.title = element_text(size=rel(1.2)),
