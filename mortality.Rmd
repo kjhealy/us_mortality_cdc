@@ -419,7 +419,7 @@ out <- df_state_excess %>%
        color = "Years",
        shape = "Years",
        title = "  Excess deaths for selected jurisdictions and causes, 2020",
-       subtitle = "  Blue bars show +/- 2 standard deviations around the 2015-2019 mean for each cause.\n Individual deaths may be recorded as having more than one cause.",
+       subtitle = "  Blue bars show +/- 2 standard deviations around the 2015-2019 mean for each cause.\n  Individual deaths may be recorded as having more than one cause.",
        caption = paste0("Data: CDC. Calculations and Graph: Kieran Healy / @kjhealy\nThis graph was made on ", timestamp)) +
  facet_wrap(~reorder(cause, -pct_excess_2020), ncol = 2) 
 
@@ -535,6 +535,11 @@ season_label <- tibble(wk_num = lubridate::epiweek(as.Date(c("2020-03-01",
                                      "2020-12-01"))),
                     season_lab = c("Spring", "Summer", "Autumn", "Winter"))
 
+
+month_label <- tibble(wk_num = lubridate::epiweek(lubridate::ymd("2020-01-15") + months(0:11)),
+                      month_lab = as.character(lubridate::month(lubridate::ymd("2020-01-15") + months(0:11), label = TRUE)))
+
+
 order_panels <- function(st = state, ...) {
   df %>% 
   filter(year < 2021,
@@ -558,7 +563,7 @@ patch_state_count <- function(state) {
   ggplot(aes(x = week, y = n, color = yr_ind, group = year)) + 
   geom_line(size = 0.9) + 
   scale_color_manual(values = c("gray70", "firebrick"), labels = c("2015-2019", "2020")) +
-  scale_x_continuous(breaks = season_label$wk_num, labels = season_label$season_lab) +      
+  scale_x_continuous(breaks = month_label$wk_num, labels = month_label$month_lab) +      
   scale_y_continuous(labels = scales::comma) +
   labs(x = NULL, 
        y = "Total Deaths", 
