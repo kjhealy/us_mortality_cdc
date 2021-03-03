@@ -24,6 +24,7 @@ done
 
 mv united_states_overlay.png usa_overlay.png
 mv united_states_patch_thumb.png usa_patch_thumb.png
+mv united_states_patch.png usa_patch.png
 mv united_states_patch.pdf usa_patch.pdf
 
 ### Shrink to thumbnail size
