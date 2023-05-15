@@ -52,8 +52,8 @@ library(covdata)
 
 ```{r}
 
-states <- nchs_wdc %>% 
-  select(jurisdiction) %>% 
+states <- nchs_wdc |> 
+  select(jurisdiction) |> 
   unique()
 
 ```
@@ -83,30 +83,30 @@ The figures shown here are all more or less direct representations of summary mo
 
 ```{r}
 
-rate_rank <- stmf %>%
-  filter(sex == "b", year > 2014 & year < 2020) %>%
-  group_by(country_code) %>%
-  summarize(mean_rate = mean(rate_total, na.rm = TRUE)) %>% 
+rate_rank <- stmf |>
+  filter(sex == "b", year > 2014 & year < 2020) |>
+  group_by(country_code) |>
+  summarize(mean_rate = mean(rate_total, na.rm = TRUE)) |> 
   mutate(rate_rank = rank(mean_rate))
   
 
-rate_max_rank <- stmf %>%
-  filter(sex == "b", year == 2020) %>%
-  group_by(country_code) %>%
-  summarize(covid_max = max(rate_total, na.rm = TRUE)) %>% 
+rate_max_rank <- stmf |>
+  filter(sex == "b", year == 2020) |>
+  group_by(country_code) |>
+  summarize(covid_max = max(rate_total, na.rm = TRUE)) |> 
   mutate(covid_max_rank = rank(covid_max))
 
-out <- stmf %>%
+out <- stmf |>
   filter(sex == "b", year > 2014, year < 2021, 
          country_code %in% c("AUT", "BEL", "CHE", "DEUTNP", "DNK", "ESP", "FIN",
                              "FRATNP", "GBR_SCO", "GBRTENW", "GRC", "HUN",
-                             "ITA", "LUX", "POL", "NLD", "NOR", "PRT", "SWE", "USA")) %>%
-  filter(!(year == 2020 & week > 53)) %>%
-  group_by(cname, year, week) %>%
-  mutate(yr_ind = year %in% 2020) %>%
-  slice(1) %>% 
-  left_join(rate_rank, by = "country_code") %>% 
-  left_join(rate_max_rank, by = "country_code") %>% 
+                             "ITA", "LUX", "POL", "NLD", "NOR", "PRT", "SWE", "USA")) |>
+  filter(!(year == 2020 & week > 53)) |>
+  group_by(cname, year, week) |>
+  mutate(yr_ind = year %in% 2020) |>
+  slice(1) |> 
+  left_join(rate_rank, by = "country_code") |> 
+  left_join(rate_max_rank, by = "country_code") |> 
   ggplot(aes(x = week, y = rate_total, color = yr_ind, group = year)) + 
   scale_color_manual(values = c("gray70", "firebrick"), labels = c("2015-2019", "2020")) +
   scale_x_continuous(limits = c(1, 52),  
@@ -147,11 +147,11 @@ knitr::include_graphics("figures/national_mortality_rates.pdf")
 
 ```{r, eval=FALSE}
 
-nchs_wdc %>% 
-  filter(cause %in% c("All Cause", "Natural Causes"), jurisdiction %in% "United States") %>% 
-  group_by(cause, year) %>% 
-  summarize(n = sum(n)) %>% 
-  pivot_wider(names_from = "cause", values_from = "n") %>% 
+nchs_wdc |> 
+  filter(cause %in% c("All Cause", "Natural Causes"), jurisdiction %in% "United States") |> 
+  group_by(cause, year) |> 
+  summarize(n = sum(n)) |> 
+  pivot_wider(names_from = "cause", values_from = "n") |> 
   mutate(delta = `All Cause` - `Natural Causes`)
 
 ```
@@ -160,49 +160,49 @@ nchs_wdc %>%
 start_week <- 1
 end_week <- 53
 
-df_yr <- nchs_wdc %>%
+df_yr <- nchs_wdc |>
   filter(year > 2014,
          year < 2021,
          week >= start_week & 
-         week <= end_week) %>% 
-  group_by(jurisdiction, cause, year) %>%
+         week <= end_week) |> 
+  group_by(jurisdiction, cause, year) |>
   summarize(period_deaths = sum(n, na.rm = TRUE)) 
 
 
-baseline_deaths <- nchs_wdc %>% 
+baseline_deaths <- nchs_wdc |> 
   filter(year %in% c(2015:2019),
          week >= start_week & 
-         week <= end_week) %>%
-  group_by(jurisdiction, year, cause) %>%
-  summarize(total_n = sum(n, na.rm = TRUE)) %>%
-  group_by(jurisdiction, cause) %>%
+         week <= end_week) |>
+  group_by(jurisdiction, year, cause) |>
+  summarize(total_n = sum(n, na.rm = TRUE)) |>
+  group_by(jurisdiction, cause) |>
   summarize(baseline = mean(total_n, na.rm = TRUE), 
             baseline_sd = sd(total_n, na.rm = TRUE)) 
 
-df_excess <- left_join(df_yr, baseline_deaths) %>%
+df_excess <- left_join(df_yr, baseline_deaths) |>
   mutate(excess = period_deaths - baseline, 
          pct_excess = (excess / period_deaths)*100, 
-         pct_sd = (baseline_sd/baseline)*100) %>%
+         pct_sd = (baseline_sd/baseline)*100) |>
   rename(deaths = period_deaths)
 
-df_meds <- df_excess %>%
+df_meds <- df_excess |>
   summarize(med = median(pct_excess))
 ```
 
 ```{r, eval = FALSE}
 
-df_excess %>% 
-  ungroup() %>% 
+df_excess |> 
+  ungroup() |> 
   filter(jurisdiction == "United States", 
          cause == "All Cause", 
-         year < 2021) %>% 
+         year < 2021) |> 
   select(jurisdiction, year, deaths)
 
-df_excess %>% 
-  ungroup() %>% 
+df_excess |> 
+  ungroup() |> 
   filter(jurisdiction == "United States", 
          cause == "All Cause", 
-         year == 2020) %>% 
+         year == 2020) |> 
   select(jurisdiction, year, deaths, baseline, 
          excess, pct_excess)
 
@@ -211,30 +211,30 @@ df_excess %>%
 
 
 ```{r}
-excess_count <- df_excess %>%
+excess_count <- df_excess |>
   filter(year == 2020 &
            cause %in% c("All Cause", "COVID-19 Multiple cause")) 
 
-excess_table <- excess_count %>%
-  mutate(col_cause = janitor::make_clean_names(cause)) %>%
-  select(jurisdiction, col_cause, deaths:pct_excess) %>%
-  group_by(jurisdiction) %>%
-  select(-cause) %>%
-  pivot_wider(names_from = col_cause, values_from = deaths:pct_excess) %>%
+excess_table <- excess_count |>
+  mutate(col_cause = janitor::make_clean_names(cause)) |>
+  select(jurisdiction, col_cause, deaths:pct_excess) |>
+  group_by(jurisdiction) |>
+  select(-cause) |>
+  pivot_wider(names_from = col_cause, values_from = deaths:pct_excess) |>
   select(-pct_excess_covid_19_multiple_cause, -excess_covid_19_multiple_cause, -baseline_covid_19_multiple_cause, 
          -baseline_sd_covid_19_multiple_cause)
 
 colnames(excess_table) <- c("jurisdiction", "all_cause", "covid", "baseline", "baseline_sd", "excess", "pct_excess")
 
 
-excess_table <- excess_table %>%
+excess_table <- excess_table |>
   mutate(deficit = excess - covid, 
          pct_covid = (covid / all_cause) * 100, 
-         pct_deficit = (deficit / all_cause) * 100) %>%
+         pct_deficit = (deficit / all_cause) * 100) |>
   select(jurisdiction, all_cause, baseline, baseline_sd, excess, covid, deficit, everything()) 
 
-excess_table %>%
-  filter(jurisdiction == "United States") %>%
+excess_table |>
+  filter(jurisdiction == "United States") |>
   pivot_longer( all_cause:pct_deficit, 
                 names_to = "measure", values_to = "value")
 
@@ -243,39 +243,39 @@ excess_table %>%
 
 ```{r}
 
-df_state_meds <- df_excess %>%
+df_state_meds <- df_excess |>
   summarize(med = median(pct_excess))
 
-df_state_sd <- df_excess %>%
-  filter(cause %nin% c("COVID-19 Underlying", "COVID-19 Multiple cause", "Other")) %>%
-  group_by(jurisdiction, cause) %>% 
-  slice(1) %>%
-  select(cause, pct_sd) %>%
+df_state_sd <- df_excess |>
+  filter(cause %nin% c("COVID-19 Underlying", "COVID-19 Multiple cause", "Other")) |>
+  group_by(jurisdiction, cause) |> 
+  slice(1) |>
+  select(cause, pct_sd) |>
   mutate(lwr = -2*pct_sd, 
-         upr = 2*pct_sd) %>%
+         upr = 2*pct_sd) |>
   left_join(df_state_meds)
 
 
 
 df_state_excess <- left_join(df_excess, df_state_sd) 
 
-df_state_excess2020 <- df_state_excess %>% 
-  select(jurisdiction,  year, cause, pct_excess) %>% 
-  filter(year == 2020) %>% 
-  rename(pct_excess_2020 = pct_excess) %>% 
-  select(jurisdiction, cause, pct_excess_2020) %>% 
+df_state_excess2020 <- df_state_excess |> 
+  select(jurisdiction,  year, cause, pct_excess) |> 
+  filter(year == 2020) |> 
+  rename(pct_excess_2020 = pct_excess) |> 
+  select(jurisdiction, cause, pct_excess_2020) |> 
   mutate(all_excess_2020 = if_else(cause == "All Cause", pct_excess_2020, NA_real_)) 
 
-df_state_excess2020 %>%
-  ungroup() %>% 
-  fill(all_excess_2020) %>% 
+df_state_excess2020 |>
+  ungroup() |> 
+  fill(all_excess_2020) |> 
   group_by(jurisdiction, cause) 
 
 df_state_excess <- left_join(df_state_excess, df_state_excess2020)
 
-df_state_excess <- df_state_excess %>%
-  ungroup() %>% 
-  fill(all_excess_2020) %>% 
+df_state_excess <- df_state_excess |>
+  ungroup() |> 
+  fill(all_excess_2020) |> 
   group_by(jurisdiction, cause) 
 
 
@@ -286,9 +286,9 @@ df_state_excess <- df_state_excess %>%
 
 timestamp <-  lubridate::stamp("March 1, 1999", "%B %d, %Y")(lubridate::ymd(Sys.Date()))   
 
-out <- df_state_excess %>% 
-   filter(cause %in% c("All Cause")) %>% 
-  mutate(yr_ind = ifelse(year == 2020, TRUE, FALSE)) %>%
+out <- df_state_excess |> 
+   filter(cause %in% c("All Cause")) |> 
+  mutate(yr_ind = ifelse(year == 2020, TRUE, FALSE)) |>
   ggplot(aes(x = pct_excess/100, 
              y = reorder(jurisdiction, pct_excess_2020, na.rm = TRUE), 
              color = yr_ind, shape = yr_ind, group = year)) + 
@@ -338,9 +338,9 @@ knitr::include_graphics("figures/excess_all_cause_by_jurisdiction.pdf")
 
 ```{r}
 
-states <- nchs_wdc %>% 
-  select(jurisdiction) %>% 
-  unique() %>%
+states <- nchs_wdc |> 
+  select(jurisdiction) |> 
+  unique() |>
   mutate(fname = tolower(paste0("figures/", jurisdiction, "_patch")), 
          fname = stringr::str_replace_all(fname, " ", "_"))
 
@@ -350,19 +350,19 @@ states <- nchs_wdc %>%
 
 ```{r, echo = FALSE}
 
-dat <- nchs_wdc %>%
-  filter(year > 2014, year < 2021) %>%
+dat <- nchs_wdc |>
+  filter(year > 2014, year < 2021) |>
   mutate(month_label = lubridate::month(week_ending_date, label = TRUE))
 
-average_deaths <- nchs_wdc %>% 
-  filter(year %in% c(2015:2019)) %>%
-  group_by(jurisdiction, week, cause) %>%
+average_deaths <- nchs_wdc |> 
+  filter(year %in% c(2015:2019)) |>
+  group_by(jurisdiction, week, cause) |>
   summarize(average_wk_deaths = mean(n, na.rm = TRUE)) 
 
-df <- left_join(dat, average_deaths) %>%
-  select(everything(), n, average_wk_deaths) %>%
+df <- left_join(dat, average_deaths) |>
+  select(everything(), n, average_wk_deaths) |>
   mutate(n_diff = n - average_wk_deaths, 
-         pct_diff = (n_diff / n)*100) %>%
+         pct_diff = (n_diff / n)*100) |>
   filter(cause %nin% c("Natural Causes", "Other"))
 ```
 
@@ -383,25 +383,25 @@ month_label <- tibble(wk_num = lubridate::epiweek(lubridate::ymd("2020-01-15") +
 
 
 order_panels <- function(st = state, ...) {
-  df %>% 
+  df |> 
   filter(year < 2021,
-         jurisdiction %in% st, cause != "All Cause") %>%
-  group_by(cause) %>% 
+         jurisdiction %in% st, cause != "All Cause") |>
+  group_by(cause) |> 
   summarize(deaths = sum(n, na.rm = TRUE), 
-            .groups = "drop") %>%
+            .groups = "drop") |>
   mutate(cause_rank = rank(-deaths), 
          o = order(cause_rank),
-         cause_ord = factor(cause, levels = cause[o], ordered = TRUE)) %>%
+         cause_ord = factor(cause, levels = cause[o], ordered = TRUE)) |>
   select(cause, cause_ord)
 }
 
 patch_state_count <- function(state) {
 
-  out <- df %>% 
-  filter(year < 2021, jurisdiction %in% state, cause == "All Cause") %>%
-  group_by(year, week) %>% 
-  mutate(yr_ind = year %in% 2020) %>%
-  filter(!(year == 2020 & week > nwks)) %>%
+  out <- df |> 
+  filter(year < 2021, jurisdiction %in% state, cause == "All Cause") |>
+  group_by(year, week) |> 
+  mutate(yr_ind = year %in% 2020) |>
+  filter(!(year == 2020 & week > nwks)) |>
   ggplot(aes(x = week, y = n, color = yr_ind, group = year)) + 
   geom_line(linewidth = 0.9) + 
   scale_color_manual(values = c("gray70", "firebrick"), labels = c("2015-2019", "2020")) +
@@ -421,15 +421,15 @@ patch_state_cause <- function(state, nc = 2) {
 
 panel_ordering <- order_panels(st = state)
   
-out <- df %>% 
+out <- df |> 
   filter(year < 2021,
          jurisdiction == state, 
-         cause %nin% c("All Cause", "COVID-19 Multiple cause", "COVID-19 Underlying")) %>%
-  group_by(cause, year, week) %>% 
-  summarize(deaths = sum(n, na.rm = TRUE), .groups = "drop") %>%
-  mutate(yr_ind = year %in% 2020) %>%
-  filter(!(year == 2020 & week > nwks)) %>%
-  left_join(panel_ordering, by = "cause") %>%
+         cause %nin% c("All Cause", "COVID-19 Multiple cause", "COVID-19 Underlying")) |>
+  group_by(cause, year, week) |> 
+  summarize(deaths = sum(n, na.rm = TRUE), .groups = "drop") |>
+  mutate(yr_ind = year %in% 2020) |>
+  filter(!(year == 2020 & week > nwks)) |>
+  left_join(panel_ordering, by = "cause") |>
   ggplot(aes(x = week, y = deaths, color = yr_ind)) + 
   geom_line(linewidth = 0.9, mapping = aes(group = year)) + 
   scale_color_manual(values = c("gray70", "firebrick"), labels = c("2015-2019", "2020")) +
@@ -449,16 +449,16 @@ patch_state_percent <- function(state, nc = 2){
   
   panel_ordering <- order_panels(st = state)
 
-  out <- df %>%
-  filter(year < 2021) %>%   
+  out <- df |>
+  filter(year < 2021) |>   
   filter(jurisdiction %in% state, 
          year == 2020, 
          cause %nin% c("All Cause", "COVID-19 Multiple cause", 
-                                                "COVID-19 Underlying"), !is.na(pct_diff)) %>%
-  group_by(week) %>% 
-  filter(!(week > nwks)) %>%
-  mutate(ov_un = pct_diff > 0) %>%
-  left_join(panel_ordering, by = "cause") %>%
+                                                "COVID-19 Underlying"), !is.na(pct_diff)) |>
+  group_by(week) |> 
+  filter(!(week > nwks)) |>
+  mutate(ov_un = pct_diff > 0) |>
+  left_join(panel_ordering, by = "cause") |>
   ggplot(aes(x = week, y = pct_diff/100, fill = ov_un)) + 
   geom_col() + 
   scale_x_continuous(breaks = c(1, seq(10, nwks, 10)), labels = as.character(c(1, seq(10, nwks, 10)))) + 
@@ -475,12 +475,12 @@ patch_state_percent <- function(state, nc = 2){
 
 patch_state_covid <- function(state) {
 
-  out <- df %>% 
-  filter(year < 2021) %>%   
-  filter(jurisdiction %in% state, cause %in% c("COVID-19 Multiple cause")) %>%
-  group_by(year, week) %>% 
-  mutate(yr_ind = year %in% 2020) %>%
-  filter(year == 2020) %>%
+  out <- df |> 
+  filter(year < 2021) |>   
+  filter(jurisdiction %in% state, cause %in% c("COVID-19 Multiple cause")) |>
+  group_by(year, week) |> 
+  mutate(yr_ind = year %in% 2020) |>
+  filter(year == 2020) |>
   ggplot(aes(x = week, y = n, group = year)) + 
   geom_col(fill = "gray30") + 
   scale_x_continuous(breaks = c(1, 10, 20, 30, 40, 50), 
@@ -521,7 +521,7 @@ timestamp <-  lubridate::stamp("March 1, 1999", "%B %d, %Y")(lubridate::ymd(Sys.
 
 ```{r draw-everything, eval = TRUE}
 
-out_patch <- states %>% 
+out_patch <- states |> 
   mutate(patch_plot = map(jurisdiction, make_patchplot))
 ```
 
@@ -540,20 +540,20 @@ walk2(paste0(out_patch$fname, ".pdf"),
 
 ```{r}
 
-us_average_deaths <- nchs_wdc %>% 
-  filter(year %in% c(2015:2019)) %>%
-  group_by(week, cause) %>%
-  summarize(average_wk_deaths = mean(n, na.rm = TRUE)) %>%
+us_average_deaths <- nchs_wdc |> 
+  filter(year %in% c(2015:2019)) |>
+  group_by(week, cause) |>
+  summarize(average_wk_deaths = mean(n, na.rm = TRUE)) |>
   ungroup()
 
-us_total <- nchs_wdc %>%
-  group_by(year, week, cause) %>%
-  summarize(n = sum(n, na.rm = TRUE)) %>%
+us_total <- nchs_wdc |>
+  group_by(year, week, cause) |>
+  summarize(n = sum(n, na.rm = TRUE)) |>
   ungroup()
 
-us_all <- left_join(us_total, us_average_deaths) %>%
-  filter(year %in% c(2015:2019)) %>%
-  select(everything(), n, average_wk_deaths) %>%
+us_all <- left_join(us_total, us_average_deaths) |>
+  filter(year %in% c(2015:2019)) |>
+  select(everything(), n, average_wk_deaths) |>
   mutate(n_diff = n - average_wk_deaths, 
          pct_diff = (n_diff / n)*100)
   
