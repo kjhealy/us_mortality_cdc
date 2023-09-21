@@ -466,8 +466,8 @@ knitr::include_graphics("figures/excess_by_cause_jurisdiction.pdf")
 timestamp <-  lubridate::stamp("March 1, 1999", "%B %d, %Y")(lubridate::ymd(Sys.Date()))   
 
 out <- df_state_excess %>% 
-   filter(cause %in% c("All Cause"), 
-          jurisdiction %nin% "North Carolina") %>% 
+  filter(cause %in% c("All Cause")) %>% 
+  mutate(jurisdiction = str_replace(jurisdiction, "^New York$", "New York (excl. NYC)")) |> 
   mutate(yr_ind = ifelse(year == 2020, TRUE, FALSE)) %>%
   ggplot(aes(x = pct_excess/100, 
              y = reorder(jurisdiction, pct_excess_2020, na.rm = TRUE), 
@@ -476,11 +476,11 @@ out <- df_state_excess %>%
                                xmax = upr/100, 
                                y = reorder(jurisdiction, pct_excess_2020, na.rm = TRUE)), 
                  color = "lightblue1", alpha = 0.7, size = 3) + 
-  geom_vline(xintercept = 0, color = "black") + 
-  geom_jitter(size = 2, position = position_jitter(height = 0.05)) +
-  scale_color_manual(values = c("gray50", "firebrick"), 
+  geom_vline(xintercept = 0, color = "gray50") + 
+  geom_jitter(size = 2, stroke = 0.8, position = position_jitter(height = 0.05)) +
+  scale_color_manual(values = c("gray20", "firebrick"), 
                      labels = c("2015-2019", "2020")) + 
-  scale_shape_manual(values = c(16, 17),
+  scale_shape_manual(values = c(1, 17),
                       labels = c("2015-2019", "2020")) +
   scale_x_continuous(labels = scales::percent_format(accuracy = 1), 
                      breaks = seq(-0.2, 0.5, 0.1), 
@@ -492,17 +492,18 @@ out <- df_state_excess %>%
        color = "Years",
        shape = "Years",
        title = " All-Cause Mortality in the United States:\n Comparing 2020 to 2015-2019",
-       subtitle = " Provisional data. Blue bars show +/- 2 standard deviations around the 2015-2019 mean.\n Jurisdictions are ordered from highest to lowest difference from the 2015-19 baseline.",
-       caption = paste0("North Carolina is omitted due to severe reporting delays. Data: CDC. Calculations and Graph: Kieran Healy / @kjhealy\nThis graph was made on ", timestamp)) 
+       subtitle = " Blue bars show ±2 standard deviations around the 2015-2019 mean.\n Jurisdictions are ordered from highest to lowest difference from the 2015-19 baseline.",
+       caption = paste0("Data: CDC. Calculations and Graph: Kieran Healy / @kjhealy\nThis graph was made on ", timestamp)) 
 
 out <- out + theme(legend.justification = "left", 
           panel.border  = element_rect(color = "gray90", size = rel(0.9), linetype="solid", fill = NA),
-          axis.text.y = element_text(face = c(rep("plain", 33), "bold", rep("plain", 20))), 
+          axis.text.y = element_text(face = c(rep("plain", 34), "bold", rep("plain", 19))), 
           axis.title.x = element_text(hjust = 0, size = rel(0.9)), 
           legend.text = element_text(size=rel(1.1)),
           legend.title = element_text(size=rel(1.2)),
           plot.title = element_text(size = rel(1.65)), 
           plot.subtitle = element_text(size = rel(1)),
+          plot.caption = element_text(size = rel(0.6)),
           plot.margin = margin(1, 2, 0.5, 0.5, "cm"))
 
 ggsave(filename = "figures/excess_all_cause_by_jurisdiction.pdf", out, height = 12, width = 8)
